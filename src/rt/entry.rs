@@ -1,4 +1,5 @@
-use crate::rt::gc::krab_thread_prologue;
+use crate::rt::gc::gc_thread_start;
+use crate::rt::thread::krab_thread_prologue;
 
 #[export_name = "krab.lang.start"]
 pub unsafe extern "C" fn krab_lang_start(
@@ -9,15 +10,17 @@ pub unsafe extern "C" fn krab_lang_start(
     println!("runtime.init");
 
     dbg!(argc, argv);
-    
+
     unsafe {
         // main thread.
         krab_thread_prologue();
 
+        gc_thread_start();
+
         main_f();
-        
+
         // no epilogue. WE ARE ENDING HERE.
     }
-    
+
     0
 }
