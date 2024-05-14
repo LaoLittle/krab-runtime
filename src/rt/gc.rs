@@ -44,7 +44,7 @@ pub fn gray_chan() -> &'static (Sender<SyncKObject>, Receiver<SyncKObject>) {
 }
 
 pub unsafe fn mark_gray(obj: KRef) {
-    match (*obj).info.color.compare_exchange(
+    match unsafe { &(*obj) }.info.color.compare_exchange(
         GcColor::White as u8,
         GcColor::Gray as u8,
         Ordering::Relaxed,
@@ -148,12 +148,6 @@ pub unsafe fn gc_thread_start() {
             }
 
             unsafe {
-                for object in (*heap().0.get()).unique_iter() {
-                    heap_objects.push(SyncKObject(object.0));
-                }
-            }
-
-            unsafe {
                 for root in (*thread_root_set().0.get()).unique_iter() {
                     // Safe. Same as above.
                     root_objects.reserve((*root.locals).len());
@@ -197,8 +191,16 @@ pub unsafe fn gc_thread_start() {
                 enable_barrier(false); // disable write barrier
             }
 
-            // mark newly created objects.
-            gc_mark_black();
+            unsafe {
+                // mark newly created objects.
+                gc_mark_black();
+            }
+
+            unsafe {
+                for object in (*heap().0.get()).unique_iter() {
+                    heap_objects.push(SyncKObject(object.0));
+                }
+            }
 
             // no more gray objects remain or create since barrier is disabled.
 
@@ -216,7 +218,7 @@ pub unsafe fn gc_thread_start() {
             // All white objects here are not reachable.
 
             heap_objects.par_iter().for_each(|obj| {
-                if (*obj.0).info.color.load(Ordering::Relaxed) != GcColor::White as u8 {
+                if unsafe { &(*obj.0) }.info.color.load(Ordering::Relaxed) != GcColor::White as u8 {
                     return;
                 }
 
@@ -229,7 +231,7 @@ pub unsafe fn gc_thread_start() {
             heap_objects.par_iter().for_each(|obj| {
                 let obj = obj.0;
 
-                match (*obj).info.color.compare_exchange(
+                match unsafe { &(*obj) }.info.color.compare_exchange(
                     GcColor::Black as u8,
                     GcColor::White as u8,
                     Ordering::Relaxed,

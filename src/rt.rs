@@ -49,7 +49,7 @@ pub struct TypeMetadata {
 
 #[export_name = "krab.gc.allocate"]
 pub unsafe extern "C" fn krab_gc_allocate(size: usize, align: usize) -> KRef {
-    let obj = gc_allocate(size, align).0.cast();
+    let obj = unsafe { gc_allocate(size, align).0.cast() };
 
     let index = unsafe {
         (*heap().0.get())
@@ -57,7 +57,9 @@ pub unsafe extern "C" fn krab_gc_allocate(size: usize, align: usize) -> KRef {
             .expect("unable to allocate object")
     };
 
-    (*obj).index = index;
+    unsafe {
+        (*obj).index = index;
+    }
 
     obj
 }
@@ -65,7 +67,7 @@ pub unsafe extern "C" fn krab_gc_allocate(size: usize, align: usize) -> KRef {
 // *slot: T? = obj: T?
 #[export_name = "krab.gc.writeBarrier_00"]
 pub unsafe extern "C" fn krab_gc_write_barrier_00(slot: *mut KRef, obj: KRef) {
-    if barrier_enabled() {
+    if unsafe { barrier_enabled() } {
         unsafe {
             let t = *slot;
             if !t.is_null() {
@@ -88,7 +90,7 @@ pub unsafe extern "C" fn krab_gc_write_barrier_00(slot: *mut KRef, obj: KRef) {
 // *slot: T? = obj: T
 #[export_name = "krab.gc.writeBarrier_01"]
 pub unsafe extern "C" fn krab_gc_write_barrier_01(slot: *mut KRef, obj: KRef) {
-    if barrier_enabled() {
+    if unsafe { barrier_enabled() } {
         unsafe {
             let t = *slot;
             if !t.is_null() {
@@ -107,7 +109,7 @@ pub unsafe extern "C" fn krab_gc_write_barrier_01(slot: *mut KRef, obj: KRef) {
 // *slot: T = obj: T?
 #[export_name = "krab.gc.writeBarrier_10"]
 pub unsafe extern "C" fn krab_gc_write_barrier_10(slot: *mut KRef, obj: KRef) {
-    if barrier_enabled() {
+    if unsafe { barrier_enabled() } {
         unsafe {
             barrier_mark(*slot);
 
@@ -125,7 +127,7 @@ pub unsafe extern "C" fn krab_gc_write_barrier_10(slot: *mut KRef, obj: KRef) {
 // *slot: T = obj: T
 #[export_name = "krab.gc.writeBarrier_11"]
 pub unsafe extern "C" fn krab_gc_write_barrier_11(slot: *mut KRef, obj: KRef) {
-    if barrier_enabled() {
+    if unsafe { barrier_enabled() } {
         unsafe {
             barrier_mark(*slot);
             barrier_mark(obj);
@@ -194,7 +196,9 @@ fn stop_world(b: bool) {
 
 #[inline]
 unsafe fn barrier_mark(obj: KRef) {
-    mark_gray(obj);
+    unsafe {
+        mark_gray(obj);
+    }
 }
 
 // |ObjectHead|Alignment|Object|
